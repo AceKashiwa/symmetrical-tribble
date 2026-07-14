@@ -41,6 +41,37 @@ set(cpu_PARAMS
 )
 
 # Sources
+set(STM32_Drivers_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/system_stm32f10x.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/misc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_adc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_bkp.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_can.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_cec.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_crc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_dac.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_dbgmcu.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_dma.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_exti.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_flash.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_fsmc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_gpio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_i2c.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_iwdg.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_pwr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_rcc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_rtc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_sdio.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_spi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_tim.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_usart.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Src/stm32f10x_wwdg.c
+)
+
+set(user_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32f10x_it.c
+)
+
 set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
 )
@@ -48,6 +79,10 @@ set(sources_SRCS
 # Include directories for all compilers
 set(include_DIRS
 	${CMAKE_CURRENT_SOURCE_DIR}/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F10x/Include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32F10x_StdPeriph_Driver/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr
 )
 
 # Include directories for each compiler
@@ -56,7 +91,10 @@ set(include_cxx_DIRS)
 set(include_asm_DIRS)
 
 # Symbols definition for all compilers
-set(symbols_SYMB)
+set(symbols_SYMB
+    USE_STDPERIPH_DRIVER
+    STM32F10X_HD
+)
 
 # Symbols definition for each compiler
 set(symbols_c_SYMB)
