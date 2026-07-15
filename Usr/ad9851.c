@@ -28,7 +28,8 @@ void AD9851_GPIO_Init(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin = AD9851_W_CLK_PIN | AD9851_FQ_UD_PIN |
-                                  AD9851_RESET_PIN | AD9851_DATA_PIN;
+                                  AD9851_RESET_PIN | AD9851_DATA_PIN |
+                                  AD9851_D0_PIN | AD9851_D1_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -37,6 +38,9 @@ void AD9851_GPIO_Init(void)
     GPIO_ResetBits(AD9851_FQ_UD_PORT, AD9851_FQ_UD_PIN);
     GPIO_ResetBits(AD9851_RESET_PORT, AD9851_RESET_PIN);
     GPIO_ResetBits(AD9851_DATA_PORT, AD9851_DATA_PIN);
+
+    GPIO_SetBits(AD9851_D0_PORT, AD9851_D0_PIN);
+    GPIO_SetBits(AD9851_D1_PORT, AD9851_D1_PIN);
 
     AD9851_Reset();
 }
