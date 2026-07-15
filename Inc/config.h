@@ -1,8 +1,5 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
-
-#include "stm32f10x.h"
-
 /* =========================================================================
  * 全局配置文件 —— 所有需要根据实际电路标定 / 修改的参数集中放在这里
  * 芯片：STM32F103VET6（大容量Density产品线，LQFP100，标准外设库 StdPeriph）
@@ -48,6 +45,11 @@
 #define AD9851_RESET_PIN    GPIO_Pin_14
 #define AD9851_DATA_PORT    GPIOB
 #define AD9851_DATA_PIN     GPIO_Pin_15
+
+#define AD9851_D0_PORT      GPIOB
+#define AD9851_D0_PIN       GPIO_Pin_8
+#define AD9851_D1_PORT      GPIOB
+#define AD9851_D1_PIN       GPIO_Pin_9
 
 #define AD9851_REFCLK_HZ    180000000.0  /* 30MHz 晶振 x6 倍频 */
 

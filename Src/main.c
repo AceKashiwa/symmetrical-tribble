@@ -16,7 +16,6 @@
  ******************************************************************************
  */
 
-#include <stdint.h>
 #include "stm32f10x.h"
 #include "config.h"
 #include "ad9851.h"
@@ -65,6 +64,13 @@ int main(void)
     SysTick_DelayInit();
     USART_Debug_Init(115200);
     AD9851_GPIO_Init();
+
+    /* AD9851_GPIO_Init() 内部已完成 Reset+进入串行模式的一次性脉冲，
+     * 但此时40bit寄存器里除了刚写入的那一字节外，其余位仍是上电时的
+     * 随机值。按数据手册建议，进入串行模式后应立即写入一次完整的
+     * 40bit有效数据以冲掉残留内容，避免误触发掉电模式或工厂测试模式。 */
+    AD9851_SetFrequency(TEST_FREQ_HZ);
+
     ADC_Sample_Init();
     Relay_Init();
     Key_Init();
