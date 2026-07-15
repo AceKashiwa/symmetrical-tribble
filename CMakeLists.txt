@@ -69,7 +69,7 @@ set(STM32_Drivers_SRCS
 )
 
 set(user_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32f10x_it.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/stm32f10x_it.c
 )
 
 set(sources_SRCS
