@@ -74,8 +74,6 @@ set(user_SRCS
 
 set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
-    ${STM32_Drivers_SRCS}
-    ${user_SRCS}
 )
 
 # Include directories for all compilers
@@ -105,7 +103,7 @@ set(symbols_asm_SYMB)
 
 # Link directories and names of libraries
 set(link_DIRS)
-set(link_LIBS m)
+set(link_LIBS)
 
 # Linker script
 set(linker_script_SRC)
