@@ -70,15 +70,6 @@ set(STM32_Drivers_SRCS
 
 set(user_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/stm32f10x_it.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/ad9851.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/adc_sample.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/fault_detect.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/goertzel.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/key.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/measure.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/relay.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/systick_delay.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/usart_debug.c
 )
 
 set(sources_SRCS
