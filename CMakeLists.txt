@@ -70,10 +70,13 @@ set(STM32_Drivers_SRCS
 
 set(user_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/stm32f10x_it.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/spi_ad9851.c
 )
 
 set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
+    ${STM32_Drivers_SRCS}
+    ${user_SRCS}
 )
 
 # Include directories for all compilers
