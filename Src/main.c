@@ -27,6 +27,9 @@
 #include "systick_delay.h"
 #include "usart_debug.h"
 #include <stdio.h>
+#include "bsp_ili9341_lcd.h"
+#include "bsp_xpt2046_lcd.h"
+#include "bsp_panel.h"
 
 typedef enum
 {
@@ -85,30 +88,30 @@ int main(void)
     printf("Baseline captured:\r\n");
     PrintMeasureResult(&baseline);
 
+    ILI9341_Init();
+    XPT2046_Init();
+    Panel_Init();               /* 画出主菜单 */
+
     while (1)
     {
-        if (Key_GetSwitchRequest())
-        {
-            mode = (mode == APP_MODE_MEASURE) ? APP_MODE_FAULT : APP_MODE_MEASURE;
-            printf("\r\n=== Switch to %s mode ===\r\n",
-                   (mode == APP_MODE_MEASURE) ? "MEASURE" : "FAULT-DETECT");
-        }
+        XPT2046_TouchEvenHandler();   /* 建议5~10ms调用一次，可放定时器中断 */
 
-        if (mode == APP_MODE_MEASURE)
+        if (Panel_IsNewSelectionAvailable())
         {
-            /* 第一部分：放大电路各项指标检测，自动循环测量 */
-            Measure_All(&cur);
-            PrintMeasureResult(&cur);
-        }
-        else
-        {
-            FaultType f;
-            /* 第二部分：故障检测，自动循环检测 R1~R4、C1~C3 */
-            Measure_All(&cur);
-            f = FaultDetect_Run(&cur);
-            PrintFaultResult(f);
-        }
+            MEAS_ITEM_t item = Panel_FetchSelection();  /* 取出后自动清"新选择"标志 */
 
-        Delay_ms(300);
+            switch (item)
+            {
+                case MEAS_INPUT_R:     /* 执行输入电阻测量流程 */        break;
+                case MEAS_OUTPUT_R:    /* 执行输出电阻测量流程 */        break;
+                case MEAS_GAIN:        /* 执行电压增益测量流程 */        break;
+                case MEAS_FREQ_RESP:   /* 执行幅频特性扫描流程 */        break;
+                case MEAS_FAULT_R1: case MEAS_FAULT_R2:
+                case MEAS_FAULT_R3: case MEAS_FAULT_R4:
+                case MEAS_FAULT_C1: case MEAS_FAULT_C2:
+                case MEAS_FAULT_C3:    /* 执行对应元件的故障检测流程 */  break;
+                default: break;
+            }
+        }
     }
 }

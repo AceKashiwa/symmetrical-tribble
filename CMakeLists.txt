@@ -79,6 +79,12 @@ set(user_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/relay.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/systick_delay.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/usart_debug.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/bsp_panel.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/bsp_xpt2046_lcd.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/palette.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/fonts.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/bsp_spi_flash.c 
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/bsp_ili9341_lcd.c 
 )
 
 set(sources_SRCS
