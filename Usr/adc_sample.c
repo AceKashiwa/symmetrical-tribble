@@ -1,5 +1,6 @@
 #include "adc_sample.h"
 #include "config.h"
+#include <stdio.h>
 
 /* DMA 缓冲区：按 [Uin0,Iin0,Uout0, Uin1,Iin1,Uout1, ...] 交织存放 */
 static uint16_t s_adc_buf[ADC_SAMPLE_POINTS * ADC_CH_NUM];
@@ -12,11 +13,11 @@ static void ADC_GPIO_Config(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
 static void ADC1_Config(void)
@@ -133,7 +134,7 @@ void ADC_Sample_GetChannel(uint8_t ch_idx, uint16_t **buf, uint32_t *count)
         tmp[i] = s_adc_buf[i * ADC_CH_NUM + ch_idx];
     }
     *buf = tmp;
-    *count = ADC_SAMPLE_POINTS;
+    *count = ADC_SAMPLE_POINTS; 
 }
 
 float ADC_Sample_GetVpp(uint8_t ch_idx)
@@ -160,4 +161,81 @@ float ADC_Sample_GetVavg(uint8_t ch_idx)
         sum += s_adc_buf[i * ADC_CH_NUM + ch_idx];
     }
     return ((float)sum / ADC_SAMPLE_POINTS) * ADC_VREF / ADC_FULL_SCALE;
+}
+
+/* ---- ADC 原始数据 + 计算值 串口输出 ---- */
+static const char *s_ch_names[ADC_CH_NUM] = { "Uin", "Iin", "Uout" };
+
+void ADC_Sample_DumpSerial(uint8_t print_raw_samples, uint16_t raw_count)
+{
+    uint8_t ch;
+    uint16_t i;
+
+    printf("==== ADC Dump (%d samples/ch) ====\r\n", (int)ADC_SAMPLE_POINTS);
+
+    /* ---- 摘要：每通道 Vpp / Vavg / Vmin / Vmax ---- */
+    printf("Ch   Vpp(V)   Vavg(V)   Vmin(raw) Vmax(raw)\r\n");
+    printf("-------------------------------------------\r\n");
+    for (ch = 0; ch < ADC_CH_NUM; ch++)
+    {
+        uint16_t vmin = 0xFFFF, vmax = 0;
+        uint32_t sum = 0;
+
+        for (i = 0; i < ADC_SAMPLE_POINTS; i++)
+        {
+            uint16_t v = s_adc_buf[i * ADC_CH_NUM + ch];
+            if (v < vmin) vmin = v;
+            if (v > vmax) vmax = v;
+            sum += v;
+        }
+
+        float vpp  = (float)(vmax - vmin) * ADC_VREF / ADC_FULL_SCALE;
+        float vavg = (float)sum / ADC_SAMPLE_POINTS * ADC_VREF / ADC_FULL_SCALE;
+
+        printf("%-4s  %-8.4f %-8.4f %-10u %u\r\n",
+               s_ch_names[ch], vpp, vavg, vmin, vmax);
+    }
+
+    /* ---- 原始采样点（可选） ---- */
+    if (print_raw_samples)
+    {
+        if (raw_count > ADC_SAMPLE_POINTS)
+            raw_count = ADC_SAMPLE_POINTS;
+        if (raw_count == 0)
+            raw_count = 20; /* 默认打前20个点 */
+
+        printf("\r\n--- Raw samples (first %u of %u) ---\r\n", raw_count, (unsigned)ADC_SAMPLE_POINTS);
+        printf("Idx   Uin     Iin     Uout\r\n");
+        printf("----------------------------\r\n");
+
+        for (i = 0; i < raw_count; i++)
+        {
+            /* 每10行打一次表头 */
+            if (i > 0 && (i % 20) == 0)
+                printf("Idx   Uin     Iin     Uout\r\n");
+
+            printf("%-5u %-7u %-7u %u\r\n",
+                   (unsigned)i,
+                   s_adc_buf[i * ADC_CH_NUM + 0],
+                   s_adc_buf[i * ADC_CH_NUM + 1],
+                   s_adc_buf[i * ADC_CH_NUM + 2]);
+        }
+    }
+
+    printf("==== ADC Dump End ====\r\n\r\n");
+}
+
+void ADC_Sample_GetRawMinMax(uint8_t ch_idx, uint16_t *vmin, uint16_t *vmax)
+{
+    uint32_t i;
+    uint16_t mn = 0xFFFF, mx = 0;
+
+    for (i = 0; i < ADC_SAMPLE_POINTS; i++)
+    {
+        uint16_t v = s_adc_buf[i * ADC_CH_NUM + ch_idx];
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+    }
+    *vmin = mn;
+    *vmax = mx;
 }

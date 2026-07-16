@@ -11,8 +11,8 @@
  */
 
 /* ---------------- ADC 三路采样：输入电压 / 输入电流 / 输出电压 ---------------- */
-/* 默认占用 PA0/PA1/PA2，如实际电路引脚不同，只需改这里 */
-#define ADC_CH_UIN          ADC_Channel_11   /* PC1：输入电压采样 */
+/* 占用 PC1/PC2/PC3，对应 ADC_Channel_11/12/13 */
+#define ADC_CH_UIN          ADC_Channel_11   /* PC1    ：输入电压采样 */
 #define ADC_CH_IIN          ADC_Channel_12   /* PC2：AD620 电流采样输出 */
 #define ADC_CH_UOUT         ADC_Channel_13   /* PC3：输出电压采样 */
 

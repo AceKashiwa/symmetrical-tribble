@@ -855,6 +855,7 @@ void XPT2046_TouchDown(strType_XPT2046_Coordinate *touch) {
   /***在此处编写自己的触摸按下处理应用***/
 
   /*处理触摸画板的选择按钮*/
+  Panel_HandleTouch(touch->x, touch->y);
 
   /*处理描绘轨迹*/
   // Draw_Trail(touch->pre_x, touch->pre_y, touch->x, touch->y, &brush);

@@ -24,4 +24,11 @@ float ADC_Sample_GetVpp(uint8_t ch_idx);
 /* 计算某通道的直流平均值电压（V） */
 float ADC_Sample_GetVavg(uint8_t ch_idx);
 
+/* 将最近一次采样的 ADC 原始数据 + 计算值通过 printf 输出到串口
+ * print_raw_samples: 0=仅打印摘要, 1=打印前N个原始采样点 */
+void ADC_Sample_DumpSerial(uint8_t print_raw_samples, uint16_t raw_count);
+
+/* 获取指定通道的原始 ADC 最小值和最大值（用于 Debug 面板显示） */
+void ADC_Sample_GetRawMinMax(uint8_t ch_idx, uint16_t *vmin, uint16_t *vmax);
+
 #endif

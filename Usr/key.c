@@ -9,7 +9,7 @@ void Key_Init(void)
     EXTI_InitTypeDef EXTI_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin = KEY_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; /* 内部上拉，按键按下拉低 */

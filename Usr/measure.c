@@ -21,7 +21,7 @@ float Measure_InputResistance(void)
     uin_meas_pp = ADC_Sample_GetVpp(ADC_IDX_UIN);
     iin_meas_pp = ADC_Sample_GetVpp(ADC_IDX_IIN);
 
-    uin_actual_pp = uin_meas_pp / GAIN_UIN_SAMPLE;
+    uin_actual_pp = uin_meas_pp;
     /* V_meas(pp) = Iin(pp) * R_SENSE * AD620_GAIN */
     iin_actual_amp = iin_meas_pp / (R_SENSE_OHM * AD620_GAIN);
 
@@ -51,8 +51,8 @@ float Measure_OutputResistance(void)
 
     Relay_SetLoad(0); /* 恢复空载，避免影响后续测量 */
 
-    uout_noload = uout_noload_pp / GAIN_UOUT_SAMPLE;
-    uout_load = uout_load_pp / GAIN_UOUT_SAMPLE;
+    uout_noload = uout_noload_pp ;
+    uout_load = uout_load_pp;
 
     if (uout_load < 1e-6f)
     {
@@ -70,8 +70,8 @@ float Measure_Gain_dB(void)
     Delay_ms(SETTLE_MS);
     ADC_Sample_Once(ADC_SAMPLE_RATE_HZ_DEFAULT);
 
-    uin_pp = ADC_Sample_GetVpp(ADC_IDX_UIN) / GAIN_UIN_SAMPLE;
-    uout_pp = ADC_Sample_GetVpp(ADC_IDX_UOUT) / GAIN_UOUT_SAMPLE;
+    uin_pp = ADC_Sample_GetVpp(ADC_IDX_UIN);
+    uout_pp = ADC_Sample_GetVpp(ADC_IDX_UOUT);
 
     if (uin_pp < 1e-6f)
     {
@@ -89,8 +89,8 @@ static float MeasureGainAtFreq(uint32_t freq_hz, uint32_t sample_rate_hz)
     Delay_ms(SETTLE_MS);
     ADC_Sample_Once(sample_rate_hz);
 
-    uin_pp = ADC_Sample_GetVpp(ADC_IDX_UIN) / GAIN_UIN_SAMPLE;
-    uout_pp = ADC_Sample_GetVpp(ADC_IDX_UOUT) / GAIN_UOUT_SAMPLE;
+    uin_pp = ADC_Sample_GetVpp(ADC_IDX_UIN);
+    uout_pp = ADC_Sample_GetVpp(ADC_IDX_UOUT);
 
     if (uin_pp < 1e-6f)
     {
@@ -187,7 +187,7 @@ void Measure_All(MeasureResult *result)
     AD9851_SetFrequency(TEST_FREQ_HZ);
     Delay_ms(SETTLE_MS);
     ADC_Sample_Once(ADC_SAMPLE_RATE_HZ_DEFAULT);
-    result->uout_1k_v = ADC_Sample_GetVavg(ADC_IDX_UOUT) / GAIN_UOUT_SAMPLE;
+    result->uout_1k_v = ADC_Sample_GetVavg(ADC_IDX_UOUT);
 
     result->cutoff_freq_hz = Measure_FreqResponse(result->freqresp);
     result->lowfreq_gain_db = result->freqresp[0].gain_db; /* 数组第0项固定为20Hz */
