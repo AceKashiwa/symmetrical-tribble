@@ -16,12 +16,13 @@
 
 #include "bsp_xpt2046_lcd.h"
 #include "bsp_ili9341_lcd.h"
+#include "bsp_panel.h"
 #include "bsp_spi_flash.h"
 #include "fonts.h"
 #include "palette.h"
-#include "bsp_panel.h"
 #include <stdio.h>
 #include <string.h>
+
 
 /******************************* 声明 XPT2046 相关的静态函数
  * ***************************/
@@ -324,67 +325,21 @@ static uint8_t XPT2046_ReadAdc_Smooth_XY ( strType_XPT2046_Coordinate * pScreenC
 #else // 注意：画板应用实例专用,不是很精准，但是简单，速度比较快
 static uint8_t
 XPT2046_ReadAdc_Smooth_XY(strType_XPT2046_Coordinate *pScreenCoordinate) {
-  uint8_t ucCount = 0, i;
-
+  uint8_t ucCount = 0;
   int16_t sAD_X, sAD_Y;
-  int16_t sBufferArray[2][10] = {{0}, {0}}; // 坐标X和Y进行多次采样
+  int32_t sumX = 0, sumY = 0;
 
-  // 存储采样中的最小值、最大值
-  int32_t lX_Min, lX_Max, lY_Min, lY_Max;
-
-  /* 循环采样10次 */
+  /* 采样直到笔抬起或采够 8 次（减少等待时间，快速点击也能响应） */
   do {
     XPT2046_ReadAdc_XY(&sAD_X, &sAD_Y);
-
-    sBufferArray[0][ucCount] = sAD_X;
-    sBufferArray[1][ucCount] = sAD_Y;
-
+    sumX += sAD_X;
+    sumY += sAD_Y;
     ucCount++;
+  } while ((XPT2046_PENIRQ_Read() == XPT2046_PENIRQ_ActiveLevel) && (ucCount < 8));
 
-  } while (
-      (XPT2046_PENIRQ_Read() == XPT2046_PENIRQ_ActiveLevel) &&
-      (ucCount < 10)); // 用户点击触摸屏时即TP_INT_IN信号为低 并且 ucCount<10
-
-  /*如果触笔弹起*/
-  if (XPT2046_PENIRQ_Read() != XPT2046_PENIRQ_ActiveLevel)
-    ucXPT2046_TouchFlag = 0; // 中断标志复位
-
-  /*如果成功采样10个样本*/
-  if (ucCount == 10) {
-    lX_Max = lX_Min = sBufferArray[0][0];
-    lY_Max = lY_Min = sBufferArray[1][0];
-
-    for (i = 1; i < 10; i++) {
-      if (sBufferArray[0][i] < lX_Min)
-        lX_Min = sBufferArray[0][i];
-
-      else if (sBufferArray[0][i] > lX_Max)
-        lX_Max = sBufferArray[0][i];
-    }
-
-    for (i = 1; i < 10; i++) {
-      if (sBufferArray[1][i] < lY_Min)
-        lY_Min = sBufferArray[1][i];
-
-      else if (sBufferArray[1][i] > lY_Max)
-        lY_Max = sBufferArray[1][i];
-    }
-
-    /*去除最小值和最大值之后求平均值*/
-    pScreenCoordinate->x =
-        (sBufferArray[0][0] + sBufferArray[0][1] + sBufferArray[0][2] +
-         sBufferArray[0][3] + sBufferArray[0][4] + sBufferArray[0][5] +
-         sBufferArray[0][6] + sBufferArray[0][7] + sBufferArray[0][8] +
-         sBufferArray[0][9] - lX_Min - lX_Max) >>
-        3;
-
-    pScreenCoordinate->y =
-        (sBufferArray[1][0] + sBufferArray[1][1] + sBufferArray[1][2] +
-         sBufferArray[1][3] + sBufferArray[1][4] + sBufferArray[1][5] +
-         sBufferArray[1][6] + sBufferArray[1][7] + sBufferArray[1][8] +
-         sBufferArray[1][9] - lY_Min - lY_Max) >>
-        3;
-
+  if (ucCount >= 2) {  /* 至少有 2 个有效采样即认为成功 */
+    pScreenCoordinate->x = (int16_t)(sumX / ucCount);
+    pScreenCoordinate->y = (int16_t)(sumY / ucCount);
     return 1;
   }
   return 0;
@@ -848,19 +803,10 @@ uint8_t XPT2046_TouchDetect(void) {
  * @retval 无
  */
 void XPT2046_TouchDown(strType_XPT2046_Coordinate *touch) {
-  // 若为负值表示之前已处理过
-  if (touch->pre_x == -1 && touch->pre_x == -1)
-    return;
+  /* 坐标有效（非 -1）才处理 */
+  if (touch->x < 0 || touch->y < 0) return;
 
-  /***在此处编写自己的触摸按下处理应用***/
-
-  /*处理触摸画板的选择按钮*/
-  Panel_HandleTouch(touch->x, touch->y);
-
-  /*处理描绘轨迹*/
-  // Draw_Trail(touch->pre_x, touch->pre_y, touch->x, touch->y, &brush);
-
-  /***在上面编写自己的触摸按下处理应用***/
+  Panel_HandleTouch((uint16_t)touch->x, (uint16_t)touch->y);
 }
 
 /**
@@ -896,10 +842,10 @@ void XPT2046_TouchEvenHandler(void) {
     CL_GREEN;
 
     // 获取触摸坐标
-    XPT2046_Get_TouchedPoint(&cinfo, strXPT2046_TouchPara);
+    uint8_t got = XPT2046_Get_TouchedPoint(&cinfo, strXPT2046_TouchPara);
 
     // 输出调试信息到串口
-    XPT2046_DEBUG("x=%d,y=%d", cinfo.x, cinfo.y);
+    printf("[TOUCH] pressed, got=%d x=%d y=%d\r\n", (int)got, (int)cinfo.x, (int)cinfo.y);
 
     // 调用触摸被按下时的处理函数，可在该函数编写自己的触摸按下处理过程
     XPT2046_TouchDown(&cinfo);

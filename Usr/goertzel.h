@@ -13,8 +13,7 @@
  * mag:       输出：该频率分量幅值（相对值，用于两通道比较足够）
  * phase_rad: 输出：该频率分量相位（弧度）
  */
-void Goertzel_Detect(const uint16_t *samples, uint32_t n,
-                     float target_hz, float fs_hz,
-                     float *mag, float *phase_rad);
+void Goertzel_Detect(const uint16_t *samples, uint32_t n, float target_hz,
+                     float fs_hz, float *mag, float *phase_rad);
 
 #endif

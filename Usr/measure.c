@@ -21,8 +21,9 @@ float Measure_InputResistance(void)
     uin_meas_pp = ADC_Sample_GetVpp(ADC_IDX_UIN);
     iin_meas_pp = ADC_Sample_GetVpp(ADC_IDX_IIN);
 
-    uin_actual_pp = uin_meas_pp;
-    /* V_meas(pp) = Iin(pp) * R_SENSE * AD620_GAIN */
+    /* 输入采样电路有 GAIN_UIN_SAMPLE 倍放大，实际输入电压 = ADC读数 / 放大倍数 */
+    uin_actual_pp = uin_meas_pp / GAIN_UIN_SAMPLE;
+    /* Iin_actual = V_AD620_out / (R_SENSE * AD620_GAIN)，AD620_GAIN 为实测链增益 */
     iin_actual_amp = iin_meas_pp / (R_SENSE_OHM * AD620_GAIN);
 
     if (iin_actual_amp < I_EPS_AMP)
@@ -51,8 +52,8 @@ float Measure_OutputResistance(void)
 
     Relay_SetLoad(0); /* 恢复空载，避免影响后续测量 */
 
-    uout_noload = uout_noload_pp ;
-    uout_load = uout_load_pp;
+    uout_noload = uout_noload_pp * GAIN_UOUT_SAMPLE;
+    uout_load = uout_load_pp * GAIN_UOUT_SAMPLE;
 
     if (uout_load < 1e-6f)
     {
@@ -77,7 +78,8 @@ float Measure_Gain_dB(void)
     {
         return 0.0f;
     }
-    return 20.0f * log10f(uout_pp / uin_pp);
+    /* 补偿两路采样电路的不同增益/衰减系数 */
+    return 20.0f * log10f((uout_pp * GAIN_UOUT_SAMPLE) / (uin_pp / GAIN_UIN_SAMPLE));
 }
 
 /* 根据某一频率点计算增益(dB)，内部复用 Measure_Gain_dB 的采样方式 */
@@ -96,7 +98,7 @@ static float MeasureGainAtFreq(uint32_t freq_hz, uint32_t sample_rate_hz)
     {
         return -200.0f; /* 异常值，避免除0 */
     }
-    return 20.0f * log10f(uout_pp / uin_pp);
+    return 20.0f * log10f((uout_pp * GAIN_UOUT_SAMPLE) / (uin_pp / GAIN_UIN_SAMPLE));
 }
 
 /* 幅频特性测量：按报告4.2.1，逐个十倍频点测量增益，

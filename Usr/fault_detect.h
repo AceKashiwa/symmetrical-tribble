@@ -3,24 +3,23 @@
 
 #include "measure.h"
 
-typedef enum
-{
-    FAULT_NONE = 0,
-    FAULT_R1_OPEN,
-    FAULT_R1_SHORT,
-    FAULT_R2_OPEN,
-    FAULT_R2_SHORT,
-    FAULT_R3_OPEN,
-    FAULT_R3_SHORT,
-    FAULT_R4_OPEN,
-    FAULT_R4_SHORT,
-    FAULT_C1_OPEN,
-    FAULT_C1_DOUBLE,
-    FAULT_C2_OPEN,
-    FAULT_C2_DOUBLE,
-    FAULT_C3_OPEN,
-    FAULT_C3_DOUBLE,
-    FAULT_UNKNOWN
+typedef enum {
+  FAULT_NONE = 0,
+  FAULT_R1_OPEN,
+  FAULT_R1_SHORT,
+  FAULT_R2_OPEN,
+  FAULT_R2_SHORT,
+  FAULT_R3_OPEN,
+  FAULT_R3_SHORT,
+  FAULT_R4_OPEN,
+  FAULT_R4_SHORT,
+  FAULT_C1_OPEN,
+  FAULT_C1_DOUBLE,
+  FAULT_C2_OPEN,
+  FAULT_C2_DOUBLE,
+  FAULT_C3_OPEN,
+  FAULT_C3_DOUBLE,
+  FAULT_UNKNOWN
 } FaultType;
 
 /* 在电路已知正常的状态下调用一次，保存基准数据（增益、截止频率、相位等） */

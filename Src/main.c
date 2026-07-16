@@ -46,270 +46,91 @@ static void PrintMeasureResult(const MeasureResult *r)
     }
 }
 
-/* 在LCD右侧显示基准参数 */
-static void ShowBaselineOnLCD(const MeasureResult *r)
-{
-    static char l0[32], l1[32], l2[32];
-    const char *lines[3];
-
-    snprintf(l0, sizeof(l0), "Rin=%.0f  Rout=%.1f", r->rin_ohm, r->rout_ohm);
-    snprintf(l1, sizeof(l1), "Gain=%.1fdB  Fc=%.0fHz", r->gain_db, r->cutoff_freq_hz);
-    snprintf(l2, sizeof(l2), "Baseline OK");
-
-    lines[0] = l0;
-    lines[1] = l1;
-    lines[2] = l2;
-    Panel_ShowResult(lines, 3);
-}
-
-/* ======================== Mode1: 测量处理 ======================== */
-static void Mode1_HandleAction(PanelAction_t action)
-{
-    static char lbuf[8][40];
-    const char *lines[8];
-    int lc = 0;
-
-    switch (action)
-    {
-        case ACTION_MEASURE_ALL:
-        {
-            MeasureResult r;
-            Panel_Debug_Clear();
-            Panel_Debug_ShowFloat("Measuring...", 0.0f, "");
-
-            Measure_All(&r);
-            PrintMeasureResult(&r);
-
-            /* 输出全部 ADC 原始采样数据到串口 */
-            ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
-
-            /* 显示结果 */
-            snprintf(lbuf[0], sizeof(lbuf[0]), "Rin =%.1f ohm", r.rin_ohm);
-            snprintf(lbuf[1], sizeof(lbuf[1]), "Rout=%.1f ohm", r.rout_ohm);
-            snprintf(lbuf[2], sizeof(lbuf[2]), "Gain(1k)=%.2fdB", r.gain_db);
-            snprintf(lbuf[3], sizeof(lbuf[3]), "Cutoff=%.0f Hz", r.cutoff_freq_hz);
-            for (lc = 0; lc < 4; lc++) lines[lc] = lbuf[lc];
-            Panel_ShowResult(lines, lc);
-
-            /* 绘制幅频特性曲线 */
-            Panel_DrawFreqResp(r.freqresp, FREQRESP_POINT_NUM,
-                               r.gain_db, r.cutoff_freq_hz);
-
-            /* Debug 区显示中间信号 + ADC 原始值 */
-            {
-                uint16_t vmin, vmax;
-                Panel_Debug_Clear();
-                ADC_Sample_GetRawMinMax(ADC_IDX_UIN, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uin raw", vmax - vmin, "(pp)");
-                ADC_Sample_GetRawMinMax(ADC_IDX_IIN, &vmin, &vmax);
-                Panel_Debug_ShowInt("Iin raw", vmax - vmin, "(pp)");
-                ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uout raw", vmax - vmin, "(pp)");
-            }
-            break;
-        }
-
-        case ACTION_INPUT_R:
-        {
-            float rin = Measure_InputResistance();
-            printf("Input R = %.2f ohm\r\n", rin);
-            ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
-
-            snprintf(lbuf[0], sizeof(lbuf[0]), "Input Resistance");
-            snprintf(lbuf[1], sizeof(lbuf[1]), "Rin = %.1f ohm", rin);
-            if (rin > 1.0e6f)
-                snprintf(lbuf[2], sizeof(lbuf[2]), "(open circuit)");
-            else if (rin < 10.0f)
-                snprintf(lbuf[2], sizeof(lbuf[2]), "(near short)");
-            else
-                lbuf[2][0] = '\0';
-            for (lc = 0; lc < 3; lc++) lines[lc] = lbuf[lc];
-            Panel_ShowResult(lines, 3);
-            {
-                uint16_t vmin, vmax;
-                Panel_Debug_Clear();
-                ADC_Sample_GetRawMinMax(ADC_IDX_UIN, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uin pp", vmax - vmin, "raw");
-                ADC_Sample_GetRawMinMax(ADC_IDX_IIN, &vmin, &vmax);
-                Panel_Debug_ShowInt("Iin pp", vmax - vmin, "raw");
-                Panel_Debug_ShowFloat("Rin", rin, "ohm");
-            }
-            break;
-        }
-
-        case ACTION_OUTPUT_R:
-        {
-            float rout = Measure_OutputResistance();
-            printf("Output R = %.2f ohm\r\n", rout);
-            ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
-
-            snprintf(lbuf[0], sizeof(lbuf[0]), "Output Resistance");
-            snprintf(lbuf[1], sizeof(lbuf[1]), "Rout = %.1f ohm", rout);
-            for (lc = 0; lc < 2; lc++) lines[lc] = lbuf[lc];
-            Panel_ShowResult(lines, 2);
-            {
-                uint16_t vmin, vmax;
-                Panel_Debug_Clear();
-                ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uout pp", vmax - vmin, "raw");
-                Panel_Debug_ShowFloat("Rout", rout, "ohm");
-            }
-            break;
-        }
-
-        case ACTION_GAIN_1K:
-        {
-            float gain = Measure_Gain_dB();
-            printf("Gain(1kHz) = %.2f dB\r\n", gain);
-            ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
-
-            snprintf(lbuf[0], sizeof(lbuf[0]), "Voltage Gain @1kHz");
-            snprintf(lbuf[1], sizeof(lbuf[1]), "Gain = %.2f dB", gain);
-            for (lc = 0; lc < 2; lc++) lines[lc] = lbuf[lc];
-            Panel_ShowResult(lines, 2);
-            {
-                uint16_t vmin, vmax;
-                Panel_Debug_Clear();
-                ADC_Sample_GetRawMinMax(ADC_IDX_UIN, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uin pp", vmax - vmin, "raw");
-                ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uout pp", vmax - vmin, "raw");
-                Panel_Debug_ShowFloat("Gain", gain, "dB");
-            }
-            break;
-        }
-
-        case ACTION_FREQ_RESP:
-        {
-            FreqRespPoint resp[FREQRESP_POINT_NUM];
-            float cutoff = Measure_FreqResponse(resp);
-
-            printf("Freq Response measured, cutoff=%.1f Hz\r\n", cutoff);
-            ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
-
-            /* 找中频增益（1kHz） */
-            float mid_gain = 0.0f;
-            for (int i = 0; i < FREQRESP_POINT_NUM; i++)
-            {
-                if (resp[i].freq_hz == 1000.0f) { mid_gain = resp[i].gain_db; break; }
-            }
-
-            snprintf(lbuf[0], sizeof(lbuf[0]), "Freq Response");
-            snprintf(lbuf[1], sizeof(lbuf[1]), "Cutoff=%.0f Hz", cutoff);
-            snprintf(lbuf[2], sizeof(lbuf[2]), "MidGain=%.1f dB", mid_gain);
-            for (lc = 0; lc < 3; lc++) lines[lc] = lbuf[lc];
-            Panel_ShowResult(lines, 3);
-
-            /* 绘制幅频特性曲线 */
-            Panel_DrawFreqResp(resp, FREQRESP_POINT_NUM, mid_gain, cutoff);
-
-            /* Debug */
-            {
-                uint16_t vmin, vmax;
-                Panel_Debug_Clear();
-                ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
-                Panel_Debug_ShowInt("Uout pp", vmax - vmin, "raw");
-                Panel_Debug_ShowFloat("Cutoff", cutoff, "Hz");
-                Panel_Debug_ShowFloat("MidGain", mid_gain, "dB");
-            }
-            break;
-        }
-
-        default:
-            break;
-    }
-}
-
-/* ======================== Mode2: 故障检测处理 ======================== */
-static void Mode2_HandleAction(PanelAction_t action)
+/* 测量完成后的统一 LCD 显示 */
+static void DisplayResults(const MeasureResult *r)
 {
     static char lbuf[4][40];
     const char *lines[4];
+    uint16_t vmin, vmax;
 
-    if (action != ACTION_FAULT_DETECT) return;
+    /* 左列4行：核心测量结果 */
+    snprintf(lbuf[0], sizeof(lbuf[0]), "Rin  = %.1f ohm", r->rin_ohm);
+    snprintf(lbuf[1], sizeof(lbuf[1]), "Rout = %.1f ohm", r->rout_ohm);
+    snprintf(lbuf[2], sizeof(lbuf[2]), "Gain = %.2f dB", r->gain_db);
+    snprintf(lbuf[3], sizeof(lbuf[3]), "Fc   = %.0f Hz", r->cutoff_freq_hz);
+    for (int i = 0; i < 4; i++) lines[i] = lbuf[i];
+    Panel_ShowResult(lines, 4);
+
+    /* 右列4行：补充数据 + Debug 原始值 */
+    Panel_Debug_Clear();
+    Panel_Debug_ShowFloat("VoutDC", r->uout_1k_v, "V");
+    ADC_Sample_GetRawMinMax(ADC_IDX_UIN,  &vmin, &vmax);
+    Panel_Debug_ShowInt("Uinpp",  (int32_t)(vmax - vmin), "raw");
+    ADC_Sample_GetRawMinMax(ADC_IDX_IIN,  &vmin, &vmax);
+    Panel_Debug_ShowInt("Iinpp",  (int32_t)(vmax - vmin), "raw");
+    ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
+    Panel_Debug_ShowInt("Uoutpp", (int32_t)(vmax - vmin), "raw");
+
+    /* 幅频特性曲线 */
+    Panel_DrawFreqResp(r->freqresp, FREQRESP_POINT_NUM,
+                       r->gain_db, r->cutoff_freq_hz);
+}
+
+/* 统一的测量执行 + 串口输出 + LCD显示 */
+static void RunMeasureAndDisplay(void)
+{
+    MeasureResult r;
+    Panel_Debug_Clear();
+
+    Measure_All(&r);
+    PrintMeasureResult(&r);
+    ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
+    DisplayResults(&r);
+}
+
+/* 故障检测执行 + 显示 */
+static void RunFaultDetectAndDisplay(void)
+{
+    MeasureResult cur;
 
     Panel_Debug_Clear();
-    Panel_Debug_ShowFloat("Detecting...", 0.0f, "");
 
-    MeasureResult cur;
     Measure_All(&cur);
     PrintMeasureResult(&cur);
-    ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);  /* 故障检测时也输出全部 ADC 原始数据 */
+    ADC_Sample_DumpSerial(1, ADC_SAMPLE_POINTS);
 
     FaultType ft = FaultDetect_Run(&cur);
     const char *ftName = FaultDetect_TypeName(ft);
-
     printf("---- Fault Detect ---- Result: %s\r\n", ftName);
 
-    snprintf(lbuf[0], sizeof(lbuf[0]), "Fault Detection");
-    snprintf(lbuf[1], sizeof(lbuf[1]), "Result: %s", ftName);
+    /* 显示核心测量结果 + 幅频曲线 */
+    DisplayResults(&cur);
 
-    /* 补充描述 */
-    switch (ft)
+    /* 叠加故障结果到左列第4行（覆盖 Fc 值），并加第5行描述 */
     {
-        case FAULT_NONE:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "Circuit: NORMAL");
-            break;
-        case FAULT_R1_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R1 open, Vout~VCC");
-            break;
-        case FAULT_R1_SHORT:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R1 short, Vout~11V");
-            break;
-        case FAULT_R2_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R2 open, Vout~4V");
-            break;
-        case FAULT_R2_SHORT:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R2 short, Vout~VCC");
-            break;
-        case FAULT_R3_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R3 open, Vout~0.2V");
-            break;
-        case FAULT_R3_SHORT:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R3 short, Vout~VCC");
-            break;
-        case FAULT_R4_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R4 open, Rin large");
-            break;
-        case FAULT_R4_SHORT:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "R4 short, Vout~0");
-            break;
-        case FAULT_C1_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C1 open, no signal");
-            break;
-        case FAULT_C1_DOUBLE:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C1 double, phase shift");
-            break;
-        case FAULT_C2_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C2 open, gain drop");
-            break;
-        case FAULT_C2_DOUBLE:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C2 double, lowF gain up");
-            break;
-        case FAULT_C3_OPEN:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C3 open, cutoff up");
-            break;
-        case FAULT_C3_DOUBLE:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "C3 double, cutoff down");
-            break;
-        default:
-            snprintf(lbuf[2], sizeof(lbuf[2]), "Unknown fault");
-            break;
-    }
-
-    for (int i = 0; i < 3; i++) lines[i] = lbuf[i];
-    Panel_ShowResult(lines, 3);
-
-    /* Debug 面板显示详细中间信号 + ADC 原始值 */
-    {
-        uint16_t vmin, vmax;
-        Panel_Debug_Clear();
-        ADC_Sample_GetRawMinMax(ADC_IDX_UIN, &vmin, &vmax);
-        Panel_Debug_ShowInt("Uin pp", vmax - vmin, "raw");
-        ADC_Sample_GetRawMinMax(ADC_IDX_IIN, &vmin, &vmax);
-        Panel_Debug_ShowInt("Iin pp", vmax - vmin, "raw");
-        ADC_Sample_GetRawMinMax(ADC_IDX_UOUT, &vmin, &vmax);
-        Panel_Debug_ShowInt("Uout pp", vmax - vmin, "raw");
+        static char fl1[40], fl2[40];
+        const char *flines[2];
+        snprintf(fl1, sizeof(fl1), "Fault=%s", ftName);
+        switch (ft) {
+            case FAULT_NONE:      snprintf(fl2, sizeof(fl2), "Circuit NORMAL"); break;
+            case FAULT_R1_OPEN:   snprintf(fl2, sizeof(fl2), "R1 open"); break;
+            case FAULT_R1_SHORT:  snprintf(fl2, sizeof(fl2), "R1 short"); break;
+            case FAULT_R2_OPEN:   snprintf(fl2, sizeof(fl2), "R2 open"); break;
+            case FAULT_R2_SHORT:  snprintf(fl2, sizeof(fl2), "R2 short"); break;
+            case FAULT_R3_OPEN:   snprintf(fl2, sizeof(fl2), "R3 open"); break;
+            case FAULT_R3_SHORT:  snprintf(fl2, sizeof(fl2), "R3 short"); break;
+            case FAULT_R4_OPEN:   snprintf(fl2, sizeof(fl2), "R4 open"); break;
+            case FAULT_R4_SHORT:  snprintf(fl2, sizeof(fl2), "R4 short"); break;
+            case FAULT_C1_OPEN:   snprintf(fl2, sizeof(fl2), "C1 open"); break;
+            case FAULT_C1_DOUBLE: snprintf(fl2, sizeof(fl2), "C1 double"); break;
+            case FAULT_C2_OPEN:   snprintf(fl2, sizeof(fl2), "C2 open"); break;
+            case FAULT_C2_DOUBLE: snprintf(fl2, sizeof(fl2), "C2 double"); break;
+            case FAULT_C3_OPEN:   snprintf(fl2, sizeof(fl2), "C3 open"); break;
+            case FAULT_C3_DOUBLE: snprintf(fl2, sizeof(fl2), "C3 double"); break;
+            default:              snprintf(fl2, sizeof(fl2), "Unknown fault"); break;
+        }
+        flines[0] = fl1; flines[1] = fl2;
+        Panel_ShowResult(flines, 2);
     }
 }
 
@@ -321,59 +142,83 @@ int main(void)
 
     SysTick_DelayInit();
     USART_Debug_Init(115200);
+    printf("[INIT] SysTick OK\r\n");
+    printf("[INIT] USART1 OK, 115200 baud\r\n");
     AD9851_GPIO_Init();
-
-    AD9851_SetFrequency(TEST_FREQ_HZ);  /* 写入有效40bit数据 */
+    AD9851_SetFrequency(TEST_FREQ_HZ);
+    printf("[INIT] AD9851 OK, freq=%lu Hz\r\n", (unsigned long)TEST_FREQ_HZ);
 
     ADC_Sample_Init();
+    printf("[INIT] ADC1+DMA1+TIM3 OK\r\n");
     Relay_Init();
+    printf("[INIT] Relay OK\r\n");
     Key_Init();
+    printf("[INIT] KEY EXTI OK (PC13)\r\n");
 
     printf("==== System Init Done ====\r\n");
+    printf("[INIT] CoreClock=%lu Hz, SysTick started\r\n", SystemCoreClock);
 
-    /* 开机测一次基准数据 */
+    /* 开机测基准 */
     Delay_ms(200);
     Measure_All(&baseline);
     FaultDetect_SetBaseline(&baseline);
     printf("Baseline captured:\r\n");
     PrintMeasureResult(&baseline);
 
-    /* LCD + 触摸初始化（Panel_Init 内部会切换到横向模式 GramScan(3)） */
+    /* LCD + 触摸 */
+    printf("[INIT] Starting ILI9341...\r\n");
     ILI9341_Init();
+    printf("[INIT] ILI9341 OK, ID=0x%04X\r\n", (unsigned)ILI9341_ReadID());
     XPT2046_Init();
+    printf("[INIT] XPT2046 OK\r\n");
     Panel_Init();
-    ShowBaselineOnLCD(&baseline);
+    printf("[INIT] Panel OK, mode=%d\r\n", (int)Panel_GetMode());
+
+    /* 开机显示基准 */
+    DisplayResults(&baseline);
+
+    printf("[MAIN] Entering main loop...\r\n");
+    uint32_t lastHeartbeat = g_systick_ms;
 
     while (1)
     {
-        /* 触摸处理（建议5~10ms调用一次） */
+        /* 每 2 秒输出一次心跳 */
+        if (g_systick_ms - lastHeartbeat >= 2000)
+        {
+            lastHeartbeat = g_systick_ms;
+            printf("[LOOP] alive, tick=%lu ms, mode=%d\r\n",
+                   (unsigned long)g_systick_ms, (int)Panel_GetMode());
+        }
         XPT2046_TouchEvenHandler();
-
-        /* 物理按键切换模式 */
+        
+        /* 短按 KEY：循环切换 Mode1→Mode2→Mode3→Mode1 */
         if (Key_GetSwitchRequest())
         {
-            if (Panel_GetMode() == MODE_MEASURE)
-                Panel_SetMode(MODE_FAULT);
-            else
-                Panel_SetMode(MODE_MEASURE);
+            PanelMode_t m = Panel_GetMode();
+            printf("[KEY] switch from mode %d\r\n", (int)m);
+            if      (m == MODE_MEASURE) Panel_SetMode(MODE_FAULT);
+            else                        Panel_SetMode(MODE_MEASURE);
 
-            printf("Mode switched to: %s\r\n",
-                   Panel_GetMode() == MODE_MEASURE ? "MEASURE" : "FAULT");
+            printf("Mode switched to: %d\r\n", (int)Panel_GetMode());
+
+            if (Panel_GetMode() == MODE_MEASURE)
+                RunMeasureAndDisplay();
+            else if (Panel_GetMode() == MODE_FAULT)
+                RunFaultDetectAndDisplay();
+            else
+                RunMeasureAndDisplay();  /* MODE_DEBUG: 测量+显示Debug */
         }
 
-        /* 触摸按钮触发的动作 */
+        /* 触摸屏按钮（Mode3无按钮，靠KEY退出） */
         if (Panel_IsNewAction())
         {
             PanelAction_t act = Panel_FetchAction();
+            printf("[TOUCH] action=%d\r\n", (int)act);
 
-            if (Panel_GetMode() == MODE_MEASURE)
-            {
-                Mode1_HandleAction(act);
-            }
-            else
-            {
-                Mode2_HandleAction(act);
-            }
+            if (act == ACTION_MEASURE_ALL)
+                RunMeasureAndDisplay();
+            else if (act == ACTION_FAULT_DETECT)
+                RunFaultDetectAndDisplay();
         }
     }
 }
