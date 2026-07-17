@@ -17,18 +17,166 @@
  ******************************************************************************
  */
 
+#include "adc.h"
 #include "spi_ad9851.h"
 #include "stm32f10x.h"
+#include "usart.h"
+#include <stdio.h>
 
-int main(void) {
-  SPI_AD9851_Init();
+// 简易延时（粗略，仅供测试）
+static void Delay_ms(__IO uint32_t nCount)
+{
+    for (; nCount != 0; nCount--);
+}
 
-  AD9851_Reset();
+#include "adc.h"
+#include "spi_ad9851.h"
+#include "stm32f10x.h"
+#include "usart.h"
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
 
-  SPI_Cmd(SPI1, ENABLE);
+// ====== 欠采样 + 已知频率正弦拟合，测量相位差 ======
+//
+// 采样率 fs ≈ 285,714 Hz, 3通道同时采
+// DDS 频率 fd 已知 → 欠采样, 不需要满足奈奎斯特
+//
+// 配频建议（相干采样，避免频谱泄漏）:
+//   fs / fd = M / N (整数比) → N 个唯一样点覆盖 M 个信号周期
+//   例: 285714 / 200000 ≈ 10/7
+//   更好: fd = 285714 / 3 = 95238 Hz → 每周期3点
+//         fd = 285714 / 4 = 71429 Hz → 每周期4点
 
-  AD9851_SetFrequency(1000);
+// 正弦拟合: y = A·cos(wt) + B·sin(wt) + C
+// 用最小二乘解 [A, B, C]^T, 相位 = atan2(-B, A)
+typedef struct {
+    float amp;     // 幅度
+    float phase;   // 相位 (rad)
+    float offset;  // 直流偏置
+} SineFitResult;
 
-  while (1) {
-  }
+/**
+  * @brief  已知频率的三参数正弦拟合
+  * @param  data   采样数据
+  * @param  n      数据点数
+  * @param  freq   信号频率 (Hz)
+  * @param  fs     采样频率 (Hz)
+  * @return 拟合结果 (幅度, 相位, 偏置)
+  */
+static SineFitResult SineFit3Param(const uint16_t *data, int n,
+                                    float freq, float fs)
+{
+    // 构建法方程: M^T·M·x = M^T·y
+    // M = [cos(wt_i), sin(wt_i), 1]  for i=0..n-1
+    float s11 = 0, s12 = 0, s13 = 0, s22 = 0, s23 = 0, s33 = 0;
+    float b1 = 0, b2 = 0, b3 = 0;
+    float w = 2.0f * 3.14159265f * freq / fs;
+
+    for (int i = 0; i < n; i++)
+    {
+        float t  = (float)i;   // 采样时刻 i × Ts (Ts归一化)
+        float c  = cosf(w * t);
+        float s  = sinf(w * t);
+        float y  = (float)data[i];
+
+        s11 += c * c;  s12 += c * s;  s13 += c;
+        s22 += s * s;  s23 += s;
+        s33 += 1.0f;
+        b1  += c * y;  b2  += s * y;  b3  += y;
+    }
+
+    // 直接解 3×3 对称正定方程组 (Cholesky 或直接消元)
+    // [s11 s12 s13] [A]   [b1]
+    // [s12 s22 s23] [B] = [b2]
+    // [s13 s23 s33] [C]   [b3]
+    float det = s11*(s22*s33 - s23*s23)
+              - s12*(s12*s33 - s23*s13)
+              + s13*(s12*s23 - s22*s13);
+
+    if (fabsf(det) < 1e-12f) return (SineFitResult){0, 0, 0};
+
+    float invDet = 1.0f / det;
+    float A = invDet * (b1*(s22*s33 - s23*s23)
+                      - s12*(b2*s33 - s23*b3)
+                      + s13*(b2*s23 - s22*b3));
+    float B = invDet * (s11*(b2*s33 - s23*b3)
+                      - b1*(s12*s33 - s23*s13)
+                      + s13*(s12*b3 - b2*s13));
+
+    SineFitResult r;
+    r.amp    = sqrtf(A*A + B*B);
+    r.phase  = atan2f(-B, A);   // cos 相位, 范围 [-π, π]
+    r.offset = invDet * (s11*(s22*b3 - s23*b2)
+                       - s12*(s12*b3 - s23*b1)
+                       + b1*(s12*s23 - s22*s13));
+    return r;
+}
+
+
+int main(void)
+{
+    SPI_AD9851_Init();
+    AD9851_Reset();
+    SPI_Cmd(SPI1, ENABLE);
+
+    USART_Config();
+
+    // 初始化双ADC 3通道规则同步模式
+    ADCx_Init();
+
+    // ====== 设置 DDS 频率 ======
+    // 推荐: fd = fs/N, N整数 → 每周期 N 个采样点
+    // fs ≈ 285714 Hz, 选 fd ≈ 95 kHz → N=3
+    #define DDS_FREQ    95238    // Hz (≈ 285714 / 3)
+    AD9851_SetFrequency(DDS_FREQ);
+
+    printf("=== 3-Ch Undersample + Phase Measurement ===\r\n");
+    printf("f_sample = %lu Hz, f_dds = %lu Hz\r\n", ADC_FSAMPLE, DDS_FREQ);
+    printf("Layout: rank1=CH10+CH13  rank2=CH11+CH14  rank3=CH12+CH15\r\n\r\n");
+
+    // 从 DMA 缓冲区提取单个通道数据
+    #define MAX_FIT_PTS  256
+    uint16_t buf_ch10[MAX_FIT_PTS];
+    uint16_t buf_ch13[MAX_FIT_PTS];
+
+    while (1)
+    {
+        // 等待 DMA 满一圈
+        while (!ADC_BufferReady);
+        ADC_BufferReady = 0;
+
+        // 提取 CH10 (ADC1 rank1) 和 CH13 (ADC2 rank1) 用于相位差测量
+        // 注意缓冲区布局: 每3个32位字为一次完整扫描
+        int nSamples = ADC_DMA_BUF_SIZE / NOFCHANEL;
+        if (nSamples > MAX_FIT_PTS) nSamples = MAX_FIT_PTS;
+
+        for (int i = 0; i < nSamples; i++)
+        {
+            // 每次扫描的第1个32位字 = rank1
+            int idx = i * NOFCHANEL;
+            buf_ch10[i] = ADC1_VAL(idx);   // 低16位 = ADC1
+            buf_ch13[i] = ADC2_VAL(idx);   // 高16位 = ADC2
+        }
+
+        // 正弦拟合求相位
+        SineFitResult r10 = SineFit3Param(buf_ch10, nSamples,
+                                           (float)DDS_FREQ, (float)ADC_FSAMPLE);
+        SineFitResult r13 = SineFit3Param(buf_ch13, nSamples,
+                                           (float)DDS_FREQ, (float)ADC_FSAMPLE);
+
+        // 相位差 (°)
+        float dPhi_rad = r10.phase - r13.phase;
+        // 归一化到 [-π, π]
+        while (dPhi_rad >  3.14159265f) dPhi_rad -= 2.0f * 3.14159265f;
+        while (dPhi_rad < -3.14159265f) dPhi_rad += 2.0f * 3.14159265f;
+        float dPhi_deg = dPhi_rad * 180.0f / 3.14159265f;
+
+        printf("CH10: amp=%.1f  phase=%.1f°  |  "
+               "CH13: amp=%.1f  phase=%.1f°  |  "
+               "dPhi=%.2f°\r\n",
+               r10.amp, r10.phase * 57.29578f,
+               r13.amp, r13.phase * 57.29578f,
+               dPhi_deg);
+    }
 }

@@ -71,6 +71,8 @@ set(STM32_Drivers_SRCS
 set(user_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/stm32f10x_it.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Usr/spi_ad9851.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/usart.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Usr/adc.c
 )
 
 set(sources_SRCS
@@ -106,7 +108,7 @@ set(symbols_asm_SYMB)
 
 # Link directories and names of libraries
 set(link_DIRS)
-set(link_LIBS)
+set(link_LIBS m)
 
 # Linker script
 set(linker_script_SRC)
