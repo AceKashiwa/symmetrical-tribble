@@ -74,6 +74,8 @@ set(user_SRCS
 
 set(sources_SRCS
 	${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
+    ${STM32_Drivers_SRCS}
+    ${user_SRCS}
 )
 
 # Include directories for all compilers
@@ -93,6 +95,7 @@ set(include_asm_DIRS)
 # Symbols definition for all compilers
 set(symbols_SYMB
     USE_STDPERIPH_DRIVER
+    USE_FULL_ASSERT
     STM32F10X_HD
 )
 

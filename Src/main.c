@@ -16,10 +16,97 @@
  ******************************************************************************
  */
 
-#include <stdint.h>
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f10x.h"
+#include "stm32f10x_gpio.h"
+#include "stm32f10x_rcc.h"
+
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+#define RCC_APB2Periph_GPIOx RCC_APB2Periph_GPIOC
+#define GPIO_PIN_x GPIO_Pin_0
+#define GPIOx GPIOC
+
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+GPIO_InitTypeDef GPIO_InitStructure;
+
+/* Private function prototypes -----------------------------------------------*/
+void GPIO_Configuration(void);
+void RCC_Configuration(void);
+void Delay(__IO u32 nCount);
+
+/* Private functions ---------------------------------------------------------*/
 
 int main(void)
 {
-    /* Loop forever */
-	for(;;);
+  RCC_Configuration();
+
+  GPIO_Configuration();
+
+  while(1);
 }
+
+/**
+ * @brief 
+ * 
+ */
+void GPIO_Configuration()
+{
+    GPIO_InitStructure.GPIO_Pin = GPIO_PIN_x;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+    GPIO_Init(GPIOx, &GPIO_InitStructure);
+}
+
+/**
+  * @brief  Configures the different system clocks.
+  * @param  None
+  * @retval None
+  */
+void RCC_Configuration(void)
+{  
+  /* Enable GPIOA, GPIOB, RCC_APB2Periph_GPIO_KEY_BUTTON and AFIO clocks */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOx, ENABLE);
+}
+
+/**
+  * @brief  Inserts a delay time.
+  * @param  nCount: specifies the delay time length.
+  * @retval None
+  */
+void Delay(__IO u32 nCount)
+{
+  for(; nCount != 0; nCount--);
+}
+
+#ifdef  USE_FULL_ASSERT
+
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(u8* file, u32 line)
+{ 
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+
+#endif
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+
